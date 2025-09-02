@@ -34,5 +34,6 @@ namespace aspcts_backend.Models.Entities
 
         // Relacionamento Many-to-Many com Child seria implementado via tabela de junção
         // Para simplicidade, pode ser implementado posteriormente
+
     }
 }

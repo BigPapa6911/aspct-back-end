@@ -10,11 +10,11 @@
         "projectUniqueName": "C:\\Users\\gustavo.moreira\\Desktop\\aspcts-backend\\aspcts-backend\\aspcts-backend.csproj",
         "projectName": "aspcts-backend",
         "projectPath": "C:\\Users\\gustavo.moreira\\Desktop\\aspcts-backend\\aspcts-backend\\aspcts-backend.csproj",
-        "packagesPath": "C:\\Users\\gustavo.moreira\\.nuget\\packages\\",
+        "packagesPath": "C:\\Users\\gustavo.adm\\.nuget\\packages\\",
         "outputPath": "C:\\Users\\gustavo.moreira\\Desktop\\aspcts-backend\\aspcts-backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\gustavo.moreira\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\gustavo.adm\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -54,6 +54,10 @@
             "Microsoft.AspNetCore.Cors": {
               "target": "Package",
               "version": "[2.3.0, )"
+            },
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.8, )"
             },
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",

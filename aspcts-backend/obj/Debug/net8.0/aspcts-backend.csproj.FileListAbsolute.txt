@@ -167,3 +167,6 @@ C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\obj\Debug\net8.0\
 C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\obj\Debug\net8.0\aspcts-backend.pdb
 C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\obj\Debug\net8.0\aspcts-backend.genruntimeconfig.cache
 C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\obj\Debug\net8.0\ref\aspcts-backend.dll
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\bin\Debug\net8.0\AutoMapper.dll
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\bin\Debug\net8.0\AutoMapper.Extensions.Microsoft.DependencyInjection.dll
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend\bin\Debug\net8.0\BCrypt.Net-Next.dll
