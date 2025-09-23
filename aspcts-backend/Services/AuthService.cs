@@ -6,7 +6,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using BCrypt.Net;
 using aspcts_backend.Services.Interfaces;
-using aspcts_backend.Repositories.Interfaces;
+using aspcts_backend.Repositories.Interface;
 using aspcts_backend.Models.DTOs.Auth;
 using aspcts_backend.Models.Entities;
 using aspcts_backend.Models.Configuration;
@@ -34,7 +34,7 @@ public class AuthService : IAuthService
         if (user == null || !user.IsActive)
             throw new UnauthorizedAccessException("Email ou senha inválidos");
         
-        if (!BCrypt.Verify(request.Password, user.PasswordHash))
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Email ou senha inválidos");
         
         // Update last login
@@ -76,7 +76,7 @@ public class AuthService : IAuthService
         {
             Username = request.Username,
             Email = request.Email,
-            PasswordHash = BCrypt.HashPassword(request.Password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = request.Role,
             FirstName = request.FirstName,
             LastName = request.LastName,
@@ -133,22 +133,25 @@ public class AuthService : IAuthService
     {
         try
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
-            
-            tokenHandler.ValidateToken(token, new TokenValidationParameters
+            return await Task.Run(() =>
             {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = true,
-                ValidIssuer = _jwtSettings.Issuer,
-                ValidateAudience = true,
-                ValidAudience = _jwtSettings.Audience,
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
-            }, out SecurityToken validatedToken);
-            
-            return true;
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
+
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = _jwtSettings.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = _jwtSettings.Audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                }, out SecurityToken validatedToken);
+
+                return true;
+            });
         }
         catch
         {
