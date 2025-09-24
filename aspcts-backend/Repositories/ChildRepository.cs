@@ -17,7 +17,7 @@ namespace aspcts_backend.Repositories
         {
             return await _context.Children
                 .Include(c => c.PrimaryParent)
-                    .ThenInclude(p => p.User)
+                    .ThenInclude(p => p.User!)
                 .Include(c => c.SecondaryParent)
                     .ThenInclude(p => p.User)
                 .Where(c => c.AssignedPsychologistId == psychologistId && c.IsActive)
