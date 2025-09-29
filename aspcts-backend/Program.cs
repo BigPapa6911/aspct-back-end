@@ -78,6 +78,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IInterventionPlanService, InterventionPlanService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICommunicationService, CommunicationService>();
+builder.Services.AddScoped<IParentService, ParentService>();
 
 var app = builder.Build();
 
