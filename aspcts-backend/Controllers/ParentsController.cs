@@ -63,6 +63,7 @@ public class ParentsController : Controller
             return Ok(new 
             { 
                 parentId = parent.ParentId,
+                userId = parent.UserId,  // Campo necessário para CreateChild
                 firstName = parent.FirstName,
                 lastName = parent.LastName,
                 email = parent.Email,
