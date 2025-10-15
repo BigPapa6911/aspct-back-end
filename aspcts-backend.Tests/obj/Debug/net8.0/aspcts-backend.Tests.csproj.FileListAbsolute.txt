@@ -1,0 +1,7 @@
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\bin\Debug\net8.0\CoverletSourceRootsMapping_aspcts-backend.Tests
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\obj\Debug\net8.0\aspcts-backend.Tests.csproj.AssemblyReference.cache
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\obj\Debug\net8.0\aspcts-backend.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\obj\Debug\net8.0\aspcts-backend.Tests.AssemblyInfoInputs.cache
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\obj\Debug\net8.0\aspcts-backend.Tests.AssemblyInfo.cs
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\obj\Debug\net8.0\aspcts-backend.Tests.csproj.CoreCompileInputs.cache
+C:\Users\gustavo.moreira\Desktop\aspcts-backend\aspcts-backend.Tests\obj\Debug\net8.0\aspcts-backend.Tests.sourcelink.json
