@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/3da124b2-1753-4b25-b6b9-088102940571/resourceGroups/ASPCTS-BackEnd/providers/Microsoft.Web/sites/aspcts-api",
+    "appService.deploySubpath": "."
+}
