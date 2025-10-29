@@ -50,7 +50,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+            policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://aspect-frontend-seven.vercel.app" )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
