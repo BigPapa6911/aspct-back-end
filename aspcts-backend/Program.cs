@@ -60,7 +60,9 @@ builder.Services.AddCors(options =>
 // Configure AutoMapper
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
-// Register repositories
+// ═══════════════════════════════════════════════════════════
+// REPOSITORIES
+// ═══════════════════════════════════════════════════════════
 builder.Services.AddScoped<IGenericRepository<object>, GenericRepository<object>>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IChildRepository, ChildRepository>();
@@ -70,7 +72,14 @@ builder.Services.AddScoped<IInterventionPlanRepository, InterventionPlanReposito
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<ICommunicationRepository, CommunicationRepository>();
 
-// Register services
+// ═══════════════════════════════════════════════════════════
+// NOVOS REPOSITORIES
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddScoped<ISessionProtocolDataRepository, SessionProtocolDataRepository>();
+
+// ═══════════════════════════════════════════════════════════
+// SERVICES
+// ═══════════════════════════════════════════════════════════
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IChildService, ChildService>();
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
@@ -79,6 +88,7 @@ builder.Services.AddScoped<IInterventionPlanService, InterventionPlanService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICommunicationService, CommunicationService>();
 builder.Services.AddScoped<IParentService, ParentService>();
+builder.Services.AddScoped<ISessionProtocolDataService, SessionProtocolDataService>();
 
 var app = builder.Build();
 

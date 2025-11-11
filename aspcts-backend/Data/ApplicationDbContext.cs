@@ -30,6 +30,11 @@ namespace aspcts_backend.Data
             public DbSet<SupportingSkill> SupportingSkills { get; set; }
             public DbSet<ChildSupportingSkillProgress> ChildSupportingSkillProgresses { get; set; }
             public DbSet<Resource> Resources { get; set; }
+            
+            // ═══════════════════════════════════════════════════════════
+            // NOVOS DBSETS
+            // ═══════════════════════════════════════════════════════════
+            public DbSet<SessionProtocolData> SessionProtocolData { get; set; }
 
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -101,6 +106,24 @@ namespace aspcts_backend.Data
                     .WithMany(p => p.Sessions)
                     .HasForeignKey(s => s.PsychologistId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                        // ═══════════════════════════════════════════════════════════
+                        // NOVO: Relacionamento One-to-One com SessionProtocolData
+                        // ═══════════════════════════════════════════════════════════
+                        entity.HasOne(s => s.ProtocolData)
+                    .WithOne(spd => spd.Session)
+                    .HasForeignKey<SessionProtocolData>(spd => spd.SessionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                        // Índices para performance
+                        entity.HasIndex(s => s.ChildId)
+                    .HasDatabaseName("IX_Sessions_ChildId");
+
+                        entity.HasIndex(s => s.PsychologistId)
+                    .HasDatabaseName("IX_Sessions_PsychologistId");
+
+                        entity.HasIndex(s => s.SessionDate)
+                    .HasDatabaseName("IX_Sessions_SessionDate");
                   });
 
                   // Assessment Configuration
@@ -150,7 +173,9 @@ namespace aspcts_backend.Data
                     .OnDelete(DeleteBehavior.Cascade);
                   });
 
-                  // Report Configuration
+                  // ═══════════════════════════════════════════════════════════
+                  // Report Configuration (ATUALIZADO)
+                  // ═══════════════════════════════════════════════════════════
                   modelBuilder.Entity<Report>(entity =>
                   {
                         entity.HasKey(e => e.ReportId);
@@ -158,12 +183,69 @@ namespace aspcts_backend.Data
                         entity.HasOne(r => r.Child)
                     .WithMany(c => c.Reports)
                     .HasForeignKey(r => r.ChildId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.Restrict); // Mudado de Cascade para Restrict
 
                         entity.HasOne(r => r.Psychologist)
                     .WithMany(p => p.Reports)
                     .HasForeignKey(r => r.PsychologistId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                        // Relacionamento com SessionProtocolData
+                        entity.HasMany(r => r.SessionsProtocolData)
+                    .WithOne(spd => spd.Report)
+                    .HasForeignKey(spd => spd.ReportId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+
+                        // Índices para performance
+                        entity.HasIndex(r => r.ChildId)
+                    .HasDatabaseName("IX_Reports_ChildId");
+
+                        entity.HasIndex(r => r.PsychologistId)
+                    .HasDatabaseName("IX_Reports_PsychologistId");
+
+                        entity.HasIndex(r => new { r.StartPeriod, r.EndPeriod })
+                    .HasDatabaseName("IX_Reports_Period");
+
+                        entity.HasIndex(r => r.ReportDate)
+                    .HasDatabaseName("IX_Reports_ReportDate");
+
+                        // Valor padrão
+                        entity.Property(r => r.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+                  });
+
+                  // ═══════════════════════════════════════════════════════════
+                  // SessionProtocolData Configuration (NOVO)
+                  // ═══════════════════════════════════════════════════════════
+                  modelBuilder.Entity<SessionProtocolData>(entity =>
+                  {
+                        entity.HasKey(e => e.SessionProtocolDataId);
+
+                        // Relacionamento One-to-One com Session
+                        entity.HasOne(spd => spd.Session)
+                    .WithOne(s => s.ProtocolData)
+                    .HasForeignKey<SessionProtocolData>(spd => spd.SessionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                        // Relacionamento Many-to-One com Report (Opcional)
+                        entity.HasOne(spd => spd.Report)
+                    .WithMany(r => r.SessionsProtocolData)
+                    .HasForeignKey(spd => spd.ReportId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+
+                        // Índices para performance
+                        entity.HasIndex(spd => spd.SessionId)
+                    .IsUnique()
+                    .HasDatabaseName("IX_SessionProtocolData_SessionId");
+
+                        entity.HasIndex(spd => spd.ReportId)
+                    .HasDatabaseName("IX_SessionProtocolData_ReportId");
+
+                        // Valor padrão
+                        entity.Property(spd => spd.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
                   });
 
                   // CommunicationMessage Configuration

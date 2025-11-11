@@ -40,5 +40,7 @@ namespace aspcts_backend.Models.Entities
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+
+        public SessionProtocolData? ProtocolData { get; set; }
     }
 }

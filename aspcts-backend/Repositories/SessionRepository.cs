@@ -10,7 +10,6 @@ using aspcts_backend.Repositories.Interface;
 namespace aspcts_backend.Repositories
 {
     public class SessionRepository : GenericRepository<Session>, ISessionRepository
-
     {
         public SessionRepository(ApplicationDbContext context) : base(context) { }
 
@@ -20,6 +19,7 @@ namespace aspcts_backend.Repositories
                 .Include(s => s.Child)
                 .Include(s => s.Psychologist)
                     .ThenInclude(p => p.User)
+                .Include(s => s.ProtocolData) // Incluir dados do protocolo
                 .Where(s => s.ChildId == childId)
                 .OrderByDescending(s => s.SessionDate)
                 .ToListAsync();
@@ -29,6 +29,7 @@ namespace aspcts_backend.Repositories
         {
             return await _context.Sessions
                 .Include(s => s.Child)
+                .Include(s => s.ProtocolData)
                 .Where(s => s.PsychologistId == psychologistId)
                 .OrderByDescending(s => s.SessionDate)
                 .ToListAsync();
@@ -40,6 +41,7 @@ namespace aspcts_backend.Repositories
                 .Include(s => s.Child)
                 .Include(s => s.Psychologist)
                     .ThenInclude(p => p.User)
+                .Include(s => s.ProtocolData)
                 .Where(s => s.ChildId == childId && s.IsSharedWithParent)
                 .OrderByDescending(s => s.SessionDate)
                 .ToListAsync();
@@ -51,7 +53,30 @@ namespace aspcts_backend.Repositories
                 .Include(s => s.Child)
                 .Include(s => s.Psychologist)
                     .ThenInclude(p => p.User)
+                .Include(s => s.ProtocolData)
                 .Where(s => s.ChildId == childId && s.SessionDate >= startDate && s.SessionDate <= endDate)
+                .OrderByDescending(s => s.SessionDate)
+                .ToListAsync();
+        }
+
+        public async Task<Session?> GetByIdWithProtocolDataAsync(Guid sessionId)
+        {
+            return await _context.Sessions
+                .Include(s => s.Child)
+                .Include(s => s.Psychologist)
+                    .ThenInclude(p => p.User)
+                .Include(s => s.ProtocolData)
+                .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+        }
+
+        public async Task<IEnumerable<Session>> GetByChildIdWithProtocolDataAsync(Guid childId)
+        {
+            return await _context.Sessions
+                .Include(s => s.Child)
+                .Include(s => s.Psychologist)
+                    .ThenInclude(p => p.User)
+                .Include(s => s.ProtocolData)
+                .Where(s => s.ChildId == childId && s.ProtocolData != null)
                 .OrderByDescending(s => s.SessionDate)
                 .ToListAsync();
         }

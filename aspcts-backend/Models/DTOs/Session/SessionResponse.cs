@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using aspcts_backend.Models.DTOs.Common;
 
 namespace aspcts_backend.Models.DTOs.Session
 {
@@ -22,12 +20,15 @@ namespace aspcts_backend.Models.DTOs.Session
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
+        // Dados do protocolo (se existir)
+        public SessionProtocolDataResponse? ProtocolData { get; set; }
+
         // Parent-friendly summary
         public string? ParentSummary => IsSharedWithParent ? GetParentFriendlySummary() : null;
 
         private string GetParentFriendlySummary()
         {
-            var summary = new List<string>();
+            var summary = new System.Collections.Generic.List<string>();
 
             if (!string.IsNullOrEmpty(NotesWhatWasDone))
                 summary.Add($"Atividades realizadas: {NotesWhatWasDone}");

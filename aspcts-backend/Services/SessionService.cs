@@ -42,17 +42,16 @@ namespace aspcts_backend.Services
             await _sessionRepository.AddAsync(session);
             await _sessionRepository.SaveChangesAsync();
 
-            // Fetch with related data
-            var createdSession = await _sessionRepository.GetByChildIdAsync(request.ChildId);
-            var sessionWithDetails = createdSession.FirstOrDefault(s => s.SessionId == session.SessionId);
-
+            // Fetch with related data including ProtocolData
+            var sessionWithDetails = await _sessionRepository.GetByIdWithProtocolDataAsync(session.SessionId);
+            
             return _mapper.Map<SessionResponse>(sessionWithDetails);
         }
 
         public async Task<SessionResponse?> GetSessionByIdAsync(Guid sessionId, Guid userId, string userRole)
         {
-            var sessions = await _sessionRepository.GetAllAsync();
-            var session = sessions.FirstOrDefault(s => s.SessionId == sessionId);
+            // Get session with protocol data
+            var session = await _sessionRepository.GetByIdWithProtocolDataAsync(sessionId);
 
             if (session == null)
                 return null;
@@ -66,10 +65,7 @@ namespace aspcts_backend.Services
             if (userRole == "Parent" && !session.IsSharedWithParent)
                 return null;
 
-            var sessionWithDetails = await _sessionRepository.GetByChildIdAsync(session.ChildId);
-            var sessionDetail = sessionWithDetails.FirstOrDefault(s => s.SessionId == sessionId);
-
-            return _mapper.Map<SessionResponse>(sessionDetail);
+            return _mapper.Map<SessionResponse>(session);
         }
 
         public async Task<IEnumerable<SessionResponse>> GetSessionsByChildIdAsync(Guid childId, Guid userId, string userRole)
@@ -103,9 +99,8 @@ namespace aspcts_backend.Services
             _sessionRepository.Update(session);
             await _sessionRepository.SaveChangesAsync();
 
-            // Fetch updated session with details
-            var sessions = await _sessionRepository.GetByChildIdAsync(session.ChildId);
-            var updatedSession = sessions.FirstOrDefault(s => s.SessionId == sessionId);
+            // Fetch updated session with protocol data
+            var updatedSession = await _sessionRepository.GetByIdWithProtocolDataAsync(sessionId);
 
             return _mapper.Map<SessionResponse>(updatedSession);
         }
