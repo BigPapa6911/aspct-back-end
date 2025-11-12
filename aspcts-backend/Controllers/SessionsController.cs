@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using aspcts_backend.Services.Interfaces;
@@ -16,7 +13,7 @@ namespace aspcts_backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class SessionsController : Controller
+    public class SessionsController : ControllerBase
     {
         private readonly ISessionService _sessionService;
         private readonly IUserRepository _userRepository;
@@ -27,6 +24,9 @@ namespace aspcts_backend.Controllers
             _userRepository = userRepository;
         }
 
+        /// <summary>
+        /// Buscar sessão por ID
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<SessionResponse>> GetSession(Guid id)
         {
@@ -47,6 +47,9 @@ namespace aspcts_backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Buscar sessões de uma criança
+        /// </summary>
         [HttpGet("child/{childId}")]
         public async Task<ActionResult<IEnumerable<SessionResponse>>> GetSessionsByChild(Guid childId)
         {
@@ -64,6 +67,9 @@ namespace aspcts_backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Criar nova sessão
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "Psychologist")]
         public async Task<ActionResult<SessionResponse>> CreateSession([FromBody] SessionCreateRequest request)
@@ -89,6 +95,9 @@ namespace aspcts_backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Atualizar sessão
+        /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = "Psychologist")]
         public async Task<ActionResult<SessionResponse>> UpdateSession(Guid id, [FromBody] SessionUpdateRequest request)
@@ -113,6 +122,9 @@ namespace aspcts_backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Deletar sessão
+        /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Psychologist")]
         public async Task<ActionResult> DeleteSession(Guid id)
@@ -137,6 +149,9 @@ namespace aspcts_backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Compartilhar/descompartilhar sessão com pais
+        /// </summary>
         [HttpPatch("{id}/share")]
         [Authorize(Roles = "Psychologist")]
         public async Task<ActionResult> ShareWithParent(Guid id, [FromBody] bool share)
