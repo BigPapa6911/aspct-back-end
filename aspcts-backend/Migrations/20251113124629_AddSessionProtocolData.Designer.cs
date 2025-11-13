@@ -12,8 +12,8 @@ using aspcts_backend.Data;
 namespace aspcts_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251112173418_AddSessionProtocolDataAndReportUpdates")]
-    partial class AddSessionProtocolDataAndReportUpdates
+    [Migration("20251113124629_AddSessionProtocolData")]
+    partial class AddSessionProtocolData
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
