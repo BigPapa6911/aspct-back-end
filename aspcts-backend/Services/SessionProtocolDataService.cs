@@ -1,27 +1,30 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using aspcts_backend.Services.Interfaces;
 using aspcts_backend.Repositories.Interface;
 using aspcts_backend.Models.DTOs.Session;
-using aspcts_backend.Models.DTOs.Common;
 using aspcts_backend.Models.Entities;
+using aspcts_backend.Data;
 
 namespace aspcts_backend.Services
 {
     public class SessionProtocolDataService : ISessionProtocolDataService
     {
-        private readonly ISessionProtocolDataRepository _protocolDataRepository;
+        private readonly ApplicationDbContext _context;
         private readonly ISessionRepository _sessionRepository;
         private readonly IChildRepository _childRepository;
         private readonly IUserRepository _userRepository;
 
         public SessionProtocolDataService(
-            ISessionProtocolDataRepository protocolDataRepository,
+            ApplicationDbContext context,
             ISessionRepository sessionRepository,
             IChildRepository childRepository,
             IUserRepository userRepository)
         {
-            _protocolDataRepository = protocolDataRepository;
+            _context = context;
             _sessionRepository = sessionRepository;
             _childRepository = childRepository;
             _userRepository = userRepository;
@@ -37,7 +40,11 @@ namespace aspcts_backend.Services
             if (!canAccess)
                 return null;
 
-            var data = await _protocolDataRepository.GetBySessionIdAsync(sessionId);
+            var data = await _context.SessionProtocolData
+                .Include(spd => spd.Records)
+                    .ThenInclude(r => r.Intervals)
+                .FirstOrDefaultAsync(spd => spd.SessionId == sessionId);
+
             if (data == null)
                 return null;
 
@@ -50,33 +57,54 @@ namespace aspcts_backend.Services
             if (session == null || session.PsychologistId != psychologistId)
                 throw new ArgumentException("Sessão não encontrada ou acesso negado");
 
-            var existing = await _protocolDataRepository.GetBySessionIdAsync(sessionId);
+            var existing = await _context.SessionProtocolData
+                .FirstOrDefaultAsync(spd => spd.SessionId == sessionId);
+            
             if (existing != null)
                 throw new InvalidOperationException("Dados do protocolo já existem para esta sessão");
 
             var protocolData = new SessionProtocolData
             {
                 SessionId = sessionId,
-                TotalTrials = request.TotalTrials,
-                AttentionCorrect = request.AttentionCorrect,
-                AttentionTotal = request.AttentionTotal,
-                ImitationCorrect = request.ImitationCorrect,
-                ImitationTotal = request.ImitationTotal,
-                ContactCorrect = request.ContactCorrect,
-                ContactTotal = request.ContactTotal,
-                DeskActivitiesCorrect = request.DeskActivitiesCorrect,
-                DeskActivitiesTotal = request.DeskActivitiesTotal,
-                IndependenceCorrect = request.IndependenceCorrect,
-                IndependenceTotal = request.IndependenceTotal,
-                TimeRegistered = request.TimeRegistered,
-                TimeTotal = request.TimeTotal,
-                ProtocolNotes = request.ProtocolNotes
+                TotalDuration = request.TotalDuration,
+                Notes = request.Notes
             };
 
-            await _protocolDataRepository.AddAsync(protocolData);
-            await _protocolDataRepository.SaveChangesAsync();
+            _context.SessionProtocolData.Add(protocolData);
+            await _context.SaveChangesAsync();
 
-            return MapToResponse(protocolData);
+            // Adicionar records e intervals
+            foreach (var recordRequest in request.Records)
+            {
+                var record = new ProtocolRecord
+                {
+                    ProtocolDataId = protocolData.ProtocolDataId,
+                    Type = recordRequest.Type,
+                    Name = recordRequest.Name,
+                    Order = recordRequest.Order
+                };
+
+                _context.ProtocolRecords.Add(record);
+                await _context.SaveChangesAsync();
+
+                foreach (var intervalRequest in recordRequest.Intervals)
+                {
+                    var interval = new TimeInterval
+                    {
+                        RecordId = record.RecordId,
+                        Minutes = intervalRequest.Minutes,
+                        Correct = intervalRequest.Correct,
+                        Incorrect = intervalRequest.Incorrect
+                    };
+
+                    _context.TimeIntervals.Add(interval);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetBySessionIdAsync(sessionId, psychologistId, "Psychologist") 
+                ?? throw new InvalidOperationException("Erro ao buscar dados criados");
         }
 
         public async Task<SessionProtocolDataResponse?> UpdateAsync(Guid sessionId, SessionProtocolDataRequest request, Guid psychologistId)
@@ -85,30 +113,59 @@ namespace aspcts_backend.Services
             if (session == null || session.PsychologistId != psychologistId)
                 return null;
 
-            var existing = await _protocolDataRepository.GetBySessionIdAsync(sessionId);
+            var existing = await _context.SessionProtocolData
+                .Include(spd => spd.Records)
+                    .ThenInclude(r => r.Intervals)
+                .FirstOrDefaultAsync(spd => spd.SessionId == sessionId);
+
             if (existing == null)
                 return null;
 
-            existing.TotalTrials = request.TotalTrials;
-            existing.AttentionCorrect = request.AttentionCorrect;
-            existing.AttentionTotal = request.AttentionTotal;
-            existing.ImitationCorrect = request.ImitationCorrect;
-            existing.ImitationTotal = request.ImitationTotal;
-            existing.ContactCorrect = request.ContactCorrect;
-            existing.ContactTotal = request.ContactTotal;
-            existing.DeskActivitiesCorrect = request.DeskActivitiesCorrect;
-            existing.DeskActivitiesTotal = request.DeskActivitiesTotal;
-            existing.IndependenceCorrect = request.IndependenceCorrect;
-            existing.IndependenceTotal = request.IndependenceTotal;
-            existing.TimeRegistered = request.TimeRegistered;
-            existing.TimeTotal = request.TimeTotal;
-            existing.ProtocolNotes = request.ProtocolNotes;
+            // Atualizar dados principais
+            existing.TotalDuration = request.TotalDuration;
+            existing.Notes = request.Notes;
             existing.UpdatedAt = DateTime.UtcNow;
 
-            _protocolDataRepository.Update(existing);
-            await _protocolDataRepository.SaveChangesAsync();
+            // Remover records e intervals antigos
+            foreach (var record in existing.Records.ToList())
+            {
+                _context.TimeIntervals.RemoveRange(record.Intervals);
+                _context.ProtocolRecords.Remove(record);
+            }
 
-            return MapToResponse(existing);
+            await _context.SaveChangesAsync();
+
+            // Adicionar novos records e intervals
+            foreach (var recordRequest in request.Records)
+            {
+                var record = new ProtocolRecord
+                {
+                    ProtocolDataId = existing.ProtocolDataId,
+                    Type = recordRequest.Type,
+                    Name = recordRequest.Name,
+                    Order = recordRequest.Order
+                };
+
+                _context.ProtocolRecords.Add(record);
+                await _context.SaveChangesAsync();
+
+                foreach (var intervalRequest in recordRequest.Intervals)
+                {
+                    var interval = new TimeInterval
+                    {
+                        RecordId = record.RecordId,
+                        Minutes = intervalRequest.Minutes,
+                        Correct = intervalRequest.Correct,
+                        Incorrect = intervalRequest.Incorrect
+                    };
+
+                    _context.TimeIntervals.Add(interval);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetBySessionIdAsync(sessionId, psychologistId, "Psychologist");
         }
 
         public async Task<bool> DeleteAsync(Guid sessionId, Guid psychologistId)
@@ -117,46 +174,49 @@ namespace aspcts_backend.Services
             if (session == null || session.PsychologistId != psychologistId)
                 return false;
 
-            return await _protocolDataRepository.DeleteBySessionIdAsync(sessionId);
+            var protocolData = await _context.SessionProtocolData
+                .Include(spd => spd.Records)
+                    .ThenInclude(r => r.Intervals)
+                .FirstOrDefaultAsync(spd => spd.SessionId == sessionId);
+
+            if (protocolData == null)
+                return false;
+
+            _context.SessionProtocolData.Remove(protocolData);
+            await _context.SaveChangesAsync();
+
+            return true;
         }
 
         private SessionProtocolDataResponse MapToResponse(SessionProtocolData data)
         {
             return new SessionProtocolDataResponse
             {
-                ProtocolDataId = data.SessionProtocolDataId,
-                TotalTrials = data.TotalTrials,
-                Attention = new MetricData 
-                { 
-                    Correct = data.AttentionCorrect, 
-                    Total = data.AttentionTotal 
-                },
-                Imitation = new MetricData 
-                { 
-                    Correct = data.ImitationCorrect, 
-                    Total = data.ImitationTotal 
-                },
-                Contact = new MetricData 
-                { 
-                    Correct = data.ContactCorrect, 
-                    Total = data.ContactTotal 
-                },
-                DeskActivities = new MetricData 
-                { 
-                    Correct = data.DeskActivitiesCorrect, 
-                    Total = data.DeskActivitiesTotal 
-                },
-                Independence = new MetricData 
-                { 
-                    Correct = data.IndependenceCorrect, 
-                    Total = data.IndependenceTotal 
-                },
-                Time = new MetricData 
-                { 
-                    Correct = data.TimeRegistered, 
-                    Total = data.TimeTotal 
-                },
-                ProtocolNotes = data.ProtocolNotes
+                ProtocolDataId = data.ProtocolDataId,
+                SessionId = data.SessionId,
+                TotalDuration = data.TotalDuration,
+                Notes = data.Notes,
+                CreatedAt = data.CreatedAt,
+                UpdatedAt = data.UpdatedAt,
+                Records = data.Records
+                    .OrderBy(r => r.Order)
+                    .Select(r => new ProtocolRecordResponse
+                    {
+                        RecordId = r.RecordId,
+                        Type = r.Type,
+                        Name = r.Name,
+                        Order = r.Order,
+                        Intervals = r.Intervals
+                            .OrderBy(i => i.Minutes)
+                            .Select(i => new TimeIntervalResponse
+                            {
+                                Minutes = i.Minutes,
+                                Correct = i.Correct,
+                                Incorrect = i.Incorrect
+                            })
+                            .ToList()
+                    })
+                    .ToList()
             };
         }
 

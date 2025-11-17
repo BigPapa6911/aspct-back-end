@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace aspcts_backend.Models.DTOs.Session
@@ -6,40 +7,43 @@ namespace aspcts_backend.Models.DTOs.Session
     public class SessionProtocolDataRequest
     {
         [Required]
-        [Range(0, int.MaxValue)]
-        public int TotalTrials { get; set; }
+        [Range(1, 480)]
+        public int TotalDuration { get; set; }  // Duração da sessão em minutos
+        
+        [Required]
+        public List<ProtocolRecordRequest> Records { get; set; } = new();
+        
+        [StringLength(1000)]
+        public string? Notes { get; set; }
+    }
 
-        [Range(0, int.MaxValue)]
-        public int AttentionCorrect { get; set; }
-        [Range(0, int.MaxValue)]
-        public int AttentionTotal { get; set; }
+    public class ProtocolRecordRequest
+    {
+        [Required]
+        [StringLength(50)]
+        public string Type { get; set; } = string.Empty;  // "behavior", "demand", "event"
+        
+        [Required]
+        [StringLength(200)]
+        public string Name { get; set; } = string.Empty;  // Ex: "Demanda 1°", "Comportamento problema 1°"
+        
+        [Required]
+        public int Order { get; set; }  // Ordem de exibição
+        
+        [Required]
+        public List<TimeIntervalRequest> Intervals { get; set; } = new();
+    }
 
+    public class TimeIntervalRequest
+    {
+        [Required]
+        [Range(5, 60)]
+        public int Minutes { get; set; }  // 5, 10, 15, 20, ..., 60
+        
         [Range(0, int.MaxValue)]
-        public int ImitationCorrect { get; set; }
+        public int Correct { get; set; }  // Acertos neste intervalo
+        
         [Range(0, int.MaxValue)]
-        public int ImitationTotal { get; set; }
-
-        [Range(0, int.MaxValue)]
-        public int ContactCorrect { get; set; }
-        [Range(0, int.MaxValue)]
-        public int ContactTotal { get; set; }
-
-        [Range(0, int.MaxValue)]
-        public int DeskActivitiesCorrect { get; set; }
-        [Range(0, int.MaxValue)]
-        public int DeskActivitiesTotal { get; set; }
-
-        [Range(0, int.MaxValue)]
-        public int IndependenceCorrect { get; set; }
-        [Range(0, int.MaxValue)]
-        public int IndependenceTotal { get; set; }
-
-        [Range(0, int.MaxValue)]
-        public int TimeRegistered { get; set; }
-        [Range(0, int.MaxValue)]
-        public int TimeTotal { get; set; }
-
-        [StringLength(500)]
-        public string? ProtocolNotes { get; set; }
+        public int Incorrect { get; set; }  // Erros neste intervalo
     }
 }

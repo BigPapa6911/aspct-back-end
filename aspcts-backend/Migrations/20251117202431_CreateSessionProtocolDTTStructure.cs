@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace aspcts_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class CreateSessionProtocolDTTStructure : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -335,7 +335,7 @@ namespace aspcts_backend.Migrations
                     StartPeriod = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EndPeriod = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsSharedWithParent = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
@@ -346,7 +346,7 @@ namespace aspcts_backend.Migrations
                         column: x => x.ChildId,
                         principalTable: "Children",
                         principalColumn: "ChildId",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Reports_Psychologists_PsychologistId",
                         column: x => x.PsychologistId,
@@ -413,6 +413,77 @@ namespace aspcts_backend.Migrations
                         column: x => x.PlanId,
                         principalTable: "InterventionPlans",
                         principalColumn: "PlanId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SessionProtocolData",
+                columns: table => new
+                {
+                    ProtocolDataId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SessionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ReportId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    TotalDuration = table.Column<int>(type: "int", nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SessionProtocolData", x => x.ProtocolDataId);
+                    table.ForeignKey(
+                        name: "FK_SessionProtocolData_Reports_ReportId",
+                        column: x => x.ReportId,
+                        principalTable: "Reports",
+                        principalColumn: "ReportId",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_SessionProtocolData_Sessions_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "Sessions",
+                        principalColumn: "SessionId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProtocolRecords",
+                columns: table => new
+                {
+                    RecordId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ProtocolDataId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Order = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProtocolRecords", x => x.RecordId);
+                    table.ForeignKey(
+                        name: "FK_ProtocolRecords_SessionProtocolData_ProtocolDataId",
+                        column: x => x.ProtocolDataId,
+                        principalTable: "SessionProtocolData",
+                        principalColumn: "ProtocolDataId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TimeIntervals",
+                columns: table => new
+                {
+                    IntervalId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RecordId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Minutes = table.Column<int>(type: "int", nullable: false),
+                    Correct = table.Column<int>(type: "int", nullable: false),
+                    Incorrect = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TimeIntervals", x => x.IntervalId);
+                    table.ForeignKey(
+                        name: "FK_TimeIntervals_ProtocolRecords_RecordId",
+                        column: x => x.RecordId,
+                        principalTable: "ProtocolRecords",
+                        principalColumn: "RecordId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -493,6 +564,16 @@ namespace aspcts_backend.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProtocolRecords_ProtocolDataId",
+                table: "ProtocolRecords",
+                column: "ProtocolDataId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProtocolRecords_ProtocolDataId_Order",
+                table: "ProtocolRecords",
+                columns: new[] { "ProtocolDataId", "Order" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Psychologists_UserId",
                 table: "Psychologists",
                 column: "UserId");
@@ -503,9 +584,30 @@ namespace aspcts_backend.Migrations
                 column: "ChildId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Reports_Period",
+                table: "Reports",
+                columns: new[] { "StartPeriod", "EndPeriod" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Reports_PsychologistId",
                 table: "Reports",
                 column: "PsychologistId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reports_ReportDate",
+                table: "Reports",
+                column: "ReportDate");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SessionProtocolData_ReportId",
+                table: "SessionProtocolData",
+                column: "ReportId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SessionProtocolData_SessionId",
+                table: "SessionProtocolData",
+                column: "SessionId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Sessions_ChildId",
@@ -518,9 +620,24 @@ namespace aspcts_backend.Migrations
                 column: "PsychologistId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Sessions_SessionDate",
+                table: "Sessions",
+                column: "SessionDate");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TaskAnalysisSteps_MilestoneId",
                 table: "TaskAnalysisSteps",
                 column: "MilestoneId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TimeIntervals_RecordId",
+                table: "TimeIntervals",
+                column: "RecordId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TimeIntervals_RecordId_Minutes",
+                table: "TimeIntervals",
+                columns: new[] { "RecordId", "Minutes" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
@@ -551,16 +668,13 @@ namespace aspcts_backend.Migrations
                 name: "InterventionGoals");
 
             migrationBuilder.DropTable(
-                name: "Reports");
-
-            migrationBuilder.DropTable(
                 name: "Resources");
 
             migrationBuilder.DropTable(
-                name: "Sessions");
+                name: "TaskAnalysisSteps");
 
             migrationBuilder.DropTable(
-                name: "TaskAnalysisSteps");
+                name: "TimeIntervals");
 
             migrationBuilder.DropTable(
                 name: "SupportingSkills");
@@ -570,6 +684,18 @@ namespace aspcts_backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "Milestones");
+
+            migrationBuilder.DropTable(
+                name: "ProtocolRecords");
+
+            migrationBuilder.DropTable(
+                name: "SessionProtocolData");
+
+            migrationBuilder.DropTable(
+                name: "Reports");
+
+            migrationBuilder.DropTable(
+                name: "Sessions");
 
             migrationBuilder.DropTable(
                 name: "Children");

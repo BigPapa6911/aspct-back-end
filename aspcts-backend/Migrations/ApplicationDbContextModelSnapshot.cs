@@ -352,6 +352,39 @@ namespace aspcts_backend.Migrations
                     b.ToTable("Parents");
                 });
 
+            modelBuilder.Entity("aspcts_backend.Models.Entities.ProtocolRecord", b =>
+                {
+                    b.Property<Guid>("RecordId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ProtocolDataId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("RecordId");
+
+                    b.HasIndex("ProtocolDataId")
+                        .HasDatabaseName("IX_ProtocolRecords_ProtocolDataId");
+
+                    b.HasIndex("ProtocolDataId", "Order")
+                        .HasDatabaseName("IX_ProtocolRecords_ProtocolDataId_Order");
+
+                    b.ToTable("ProtocolRecords");
+                });
+
             modelBuilder.Entity("aspcts_backend.Models.Entities.Psychologist", b =>
                 {
                     b.Property<Guid>("PsychologistId")
@@ -543,48 +576,18 @@ namespace aspcts_backend.Migrations
 
             modelBuilder.Entity("aspcts_backend.Models.Entities.SessionProtocolData", b =>
                 {
-                    b.Property<Guid>("SessionProtocolDataId")
+                    b.Property<Guid>("ProtocolDataId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("AttentionCorrect")
-                        .HasColumnType("int");
-
-                    b.Property<int>("AttentionTotal")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ContactCorrect")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ContactTotal")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<int>("DeskActivitiesCorrect")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DeskActivitiesTotal")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ImitationCorrect")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ImitationTotal")
-                        .HasColumnType("int");
-
-                    b.Property<int>("IndependenceCorrect")
-                        .HasColumnType("int");
-
-                    b.Property<int>("IndependenceTotal")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ProtocolNotes")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid?>("ReportId")
                         .HasColumnType("uniqueidentifier");
@@ -592,19 +595,13 @@ namespace aspcts_backend.Migrations
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("TimeRegistered")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TimeTotal")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TotalTrials")
+                    b.Property<int>("TotalDuration")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("SessionProtocolDataId");
+                    b.HasKey("ProtocolDataId");
 
                     b.HasIndex("ReportId")
                         .HasDatabaseName("IX_SessionProtocolData_ReportId");
@@ -669,6 +666,35 @@ namespace aspcts_backend.Migrations
                     b.HasIndex("MilestoneId");
 
                     b.ToTable("TaskAnalysisSteps");
+                });
+
+            modelBuilder.Entity("aspcts_backend.Models.Entities.TimeInterval", b =>
+                {
+                    b.Property<Guid>("IntervalId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Correct")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Incorrect")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("IntervalId");
+
+                    b.HasIndex("RecordId")
+                        .HasDatabaseName("IX_TimeIntervals_RecordId");
+
+                    b.HasIndex("RecordId", "Minutes")
+                        .HasDatabaseName("IX_TimeIntervals_RecordId_Minutes");
+
+                    b.ToTable("TimeIntervals");
                 });
 
             modelBuilder.Entity("aspcts_backend.Models.Entities.User", b =>
@@ -910,6 +936,17 @@ namespace aspcts_backend.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("aspcts_backend.Models.Entities.ProtocolRecord", b =>
+                {
+                    b.HasOne("aspcts_backend.Models.Entities.SessionProtocolData", "ProtocolData")
+                        .WithMany("Records")
+                        .HasForeignKey("ProtocolDataId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProtocolData");
+                });
+
             modelBuilder.Entity("aspcts_backend.Models.Entities.Psychologist", b =>
                 {
                     b.HasOne("aspcts_backend.Models.Entities.User", "User")
@@ -988,6 +1025,17 @@ namespace aspcts_backend.Migrations
                     b.Navigation("Milestone");
                 });
 
+            modelBuilder.Entity("aspcts_backend.Models.Entities.TimeInterval", b =>
+                {
+                    b.HasOne("aspcts_backend.Models.Entities.ProtocolRecord", "Record")
+                        .WithMany("Intervals")
+                        .HasForeignKey("RecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Record");
+                });
+
             modelBuilder.Entity("aspcts_backend.Models.Entities.Child", b =>
                 {
                     b.Navigation("Assessments");
@@ -1020,6 +1068,11 @@ namespace aspcts_backend.Migrations
                     b.Navigation("SecondaryChildren");
                 });
 
+            modelBuilder.Entity("aspcts_backend.Models.Entities.ProtocolRecord", b =>
+                {
+                    b.Navigation("Intervals");
+                });
+
             modelBuilder.Entity("aspcts_backend.Models.Entities.Psychologist", b =>
                 {
                     b.Navigation("Assessments");
@@ -1041,6 +1094,11 @@ namespace aspcts_backend.Migrations
             modelBuilder.Entity("aspcts_backend.Models.Entities.Session", b =>
                 {
                     b.Navigation("ProtocolData");
+                });
+
+            modelBuilder.Entity("aspcts_backend.Models.Entities.SessionProtocolData", b =>
+                {
+                    b.Navigation("Records");
                 });
 
             modelBuilder.Entity("aspcts_backend.Models.Entities.SupportingSkill", b =>

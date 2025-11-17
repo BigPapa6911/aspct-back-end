@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using aspcts_backend.Services.Interfaces;
 using aspcts_backend.Repositories.Interface;
 using aspcts_backend.Models.DTOs.Report;
-using aspcts_backend.Models.Entities;
 using aspcts_backend.Models.DTOs.Common;
+using aspcts_backend.Models.Entities;
+using aspcts_backend.Data;
 
 namespace aspcts_backend.Services
 {
@@ -16,7 +18,7 @@ namespace aspcts_backend.Services
         private readonly IReportRepository _reportRepository;
         private readonly IChildRepository _childRepository;
         private readonly ISessionRepository _sessionRepository;
-        private readonly ISessionProtocolDataRepository _protocolDataRepository;
+        private readonly ApplicationDbContext _context;
         private readonly IAssessmentRepository _assessmentRepository;
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
@@ -25,7 +27,7 @@ namespace aspcts_backend.Services
             IReportRepository reportRepository,
             IChildRepository childRepository,
             ISessionRepository sessionRepository,
-            ISessionProtocolDataRepository protocolDataRepository,
+            ApplicationDbContext context,
             IAssessmentRepository assessmentRepository,
             IUserRepository userRepository,
             IMapper mapper)
@@ -33,7 +35,7 @@ namespace aspcts_backend.Services
             _reportRepository = reportRepository;
             _childRepository = childRepository;
             _sessionRepository = sessionRepository;
-            _protocolDataRepository = protocolDataRepository;
+            _context = context;
             _assessmentRepository = assessmentRepository;
             _userRepository = userRepository;
             _mapper = mapper;
@@ -61,15 +63,12 @@ namespace aspcts_backend.Services
             await _reportRepository.AddAsync(report);
             await _reportRepository.SaveChangesAsync();
 
-            // Vincular sessões ao relatório se fornecidas
             if (request.SessionIds != null && request.SessionIds.Any())
             {
                 await _reportRepository.AddSessionsToReportAsync(report.ReportId, request.SessionIds);
             }
 
-            // Buscar relatório com todos os dados
             var createdReport = await _reportRepository.GetByIdWithSessionsAsync(report.ReportId);
-
             return await MapToDetailedResponse(createdReport!);
         }
 
@@ -84,7 +83,6 @@ namespace aspcts_backend.Services
             if (!canAccess)
                 return null;
 
-            // For parents, only return shared reports
             if (userRole == "Parent" && !report.IsSharedWithParent)
                 return null;
 
@@ -150,7 +148,6 @@ namespace aspcts_backend.Services
             if (report == null)
                 throw new ArgumentException("Relatório não encontrado ou acesso negado");
 
-            // TODO: Implement PDF generation with iTextSharp or similar
             return Array.Empty<byte>();
         }
 
@@ -158,35 +155,59 @@ namespace aspcts_backend.Services
         {
             var response = _mapper.Map<ReportResponse>(report);
 
-            // Mapear sessões com dados do protocolo
-            response.Sessions = report.SessionsProtocolData
-                .Select(spd => new SessionWithProtocolResponse
-                {
-                    SessionId = spd.SessionId,
-                    SessionDate = spd.Session.SessionDate,
-                    Duration = spd.Session.Duration,
-                    SessionType = spd.Session.SessionType,
-                    NotesWhatWasDone = spd.Session.NotesWhatWasDone,
-                    ProtocolDataId = spd.SessionProtocolDataId,
-                    TotalTrials = spd.TotalTrials,
-                    Attention = new MetricData { Correct = spd.AttentionCorrect, Total = spd.AttentionTotal },
-                    Imitation = new MetricData { Correct = spd.ImitationCorrect, Total = spd.ImitationTotal },
-                    Contact = new MetricData { Correct = spd.ContactCorrect, Total = spd.ContactTotal },
-                    DeskActivities = new MetricData { Correct = spd.DeskActivitiesCorrect, Total = spd.DeskActivitiesTotal },
-                    Independence = new MetricData { Correct = spd.IndependenceCorrect, Total = spd.IndependenceTotal },
-                    Time = new MetricData { Correct = spd.TimeRegistered, Total = spd.TimeTotal },
-                    ProtocolNotes = spd.ProtocolNotes
-                })
+            var protocolDataWithDetails = await _context.SessionProtocolData
+                .Include(spd => spd.Session)
+                .Include(spd => spd.Records)
+                    .ThenInclude(r => r.Intervals)
+                .Where(spd => spd.ReportId == report.ReportId)
+                .ToListAsync();
+
+            response.Sessions = protocolDataWithDetails
+                .Select(spd => MapToSessionWithProtocol(spd))
                 .OrderBy(s => s.SessionDate)
                 .ToList();
 
-            // Gerar estatísticas
-            response.Statistics = GenerateStatistics(response.Sessions);
+            response.Statistics = GenerateStatisticsFromDTT(response.Sessions);
 
             return response;
         }
 
-        private ReportStatistics GenerateStatistics(List<SessionWithProtocolResponse> sessions)
+        private SessionWithProtocolResponse MapToSessionWithProtocol(SessionProtocolData spd)
+        {
+            var totalCorrect = spd.Records.Sum(r => r.Intervals.Sum(i => i.Correct));
+            var totalIncorrect = spd.Records.Sum(r => r.Intervals.Sum(i => i.Incorrect));
+            var totalAttempts = totalCorrect + totalIncorrect;
+
+            return new SessionWithProtocolResponse
+            {
+                SessionId = spd.SessionId,
+                SessionDate = spd.Session.SessionDate,
+                Duration = spd.Session.Duration,
+                SessionType = spd.Session.SessionType,
+                NotesWhatWasDone = spd.Session.NotesWhatWasDone,
+                ProtocolDataId = spd.ProtocolDataId,
+                TotalTrials = totalAttempts,
+                Attention = CreateAggregateMetric(spd.Records, "behavior"),
+                Imitation = CreateAggregateMetric(spd.Records, "demand"),
+                Contact = CreateAggregateMetric(spd.Records, "event"),
+                DeskActivities = new MetricData { Correct = totalCorrect, Total = totalAttempts },
+                Independence = new MetricData { Correct = 0, Total = 0 },
+                Time = new MetricData { Correct = spd.TotalDuration, Total = spd.TotalDuration },
+                ProtocolNotes = spd.Notes
+            };
+        }
+
+        private MetricData CreateAggregateMetric(ICollection<ProtocolRecord> records, string type)
+        {
+            var recordsOfType = records.Where(r => r.Type == type).ToList();
+            var correct = recordsOfType.Sum(r => r.Intervals.Sum(i => i.Correct));
+            var incorrect = recordsOfType.Sum(r => r.Intervals.Sum(i => i.Incorrect));
+            var total = correct + incorrect;
+
+            return new MetricData { Correct = correct, Total = total };
+        }
+
+        private ReportStatistics GenerateStatisticsFromDTT(List<SessionWithProtocolResponse> sessions)
         {
             if (!sessions.Any())
                 return new ReportStatistics();
@@ -204,11 +225,10 @@ namespace aspcts_backend.Services
                 Time = CalculateSkillAreaStats(sessions.Select(s => s.Time).ToList())
             };
 
-            // Calcular progresso geral
-            var allAreas = new[] { stats.Attention, stats.Imitation, stats.Contact, stats.DeskActivities, stats.Independence };
-            stats.OverallProgress = allAreas.Average(a => a.AveragePercentage);
+            var allAreas = new[] { stats.Attention, stats.Imitation, stats.Contact, stats.DeskActivities };
+            var areasWithData = allAreas.Where(a => a.TotalAttempts > 0).ToList();
+            stats.OverallProgress = areasWithData.Any() ? areasWithData.Average(a => a.AveragePercentage) : 0;
 
-            // Gerar highlights e áreas de melhoria
             stats.Highlights = GenerateHighlights(stats);
             stats.AreasForImprovement = GenerateAreasForImprovement(stats);
 
@@ -248,24 +268,28 @@ namespace aspcts_backend.Services
 
             var areas = new Dictionary<string, SkillAreaStats>
             {
-                { "Atenção", stats.Attention },
-                { "Imitação", stats.Imitation },
-                { "Contato", stats.Contact },
-                { "Atividades de Mesa", stats.DeskActivities },
-                { "Independência", stats.Independence }
+                { "Comportamentos", stats.Attention },
+                { "Demandas", stats.Imitation },
+                { "Eventos", stats.Contact },
+                { "Atividades Gerais", stats.DeskActivities }
             };
 
             foreach (var area in areas.OrderByDescending(a => a.Value.AveragePercentage).Take(3))
             {
-                if (area.Value.AveragePercentage >= 80)
+                if (area.Value.AveragePercentage >= 80 && area.Value.TotalAttempts > 0)
                 {
                     highlights.Add($"{area.Key}: Excelente desempenho com {area.Value.AveragePercentage:F1}% de acertos");
                 }
             }
 
-            foreach (var area in areas.Where(a => a.Value.Trend > 10))
+            foreach (var area in areas.Where(a => a.Value.Trend > 10 && a.Value.TotalAttempts > 0))
             {
                 highlights.Add($"Melhora significativa em {area.Key} (+{area.Value.Trend:F1}%)");
+            }
+
+            if (!highlights.Any())
+            {
+                highlights.Add("Sessões registradas com sucesso. Continue o trabalho!");
             }
 
             return highlights;
@@ -277,24 +301,28 @@ namespace aspcts_backend.Services
 
             var areas = new Dictionary<string, SkillAreaStats>
             {
-                { "Atenção", stats.Attention },
-                { "Imitação", stats.Imitation },
-                { "Contato", stats.Contact },
-                { "Atividades de Mesa", stats.DeskActivities },
-                { "Independência", stats.Independence }
+                { "Comportamentos", stats.Attention },
+                { "Demandas", stats.Imitation },
+                { "Eventos", stats.Contact },
+                { "Atividades Gerais", stats.DeskActivities }
             };
 
             foreach (var area in areas.OrderBy(a => a.Value.AveragePercentage).Take(2))
             {
-                if (area.Value.AveragePercentage < 70)
+                if (area.Value.AveragePercentage < 70 && area.Value.TotalAttempts > 0)
                 {
                     improvements.Add($"{area.Key}: Necessita mais prática ({area.Value.AveragePercentage:F1}% de acertos)");
                 }
             }
 
-            foreach (var area in areas.Where(a => a.Value.Trend < -10))
+            foreach (var area in areas.Where(a => a.Value.Trend < -10 && a.Value.TotalAttempts > 0))
             {
                 improvements.Add($"{area.Key}: Atenção ao declínio recente ({area.Value.Trend:F1}%)");
+            }
+
+            if (!improvements.Any())
+            {
+                improvements.Add("Manter o trabalho consistente em todas as áreas");
             }
 
             return improvements;
